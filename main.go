@@ -34,10 +34,9 @@ func main() {
 						return fmt.Errorf("password não escolhida")
 					}
 					cmd := exec.Command("pass", t)
-					out, err := cmd.Output()
-
+					out, err := cmd.CombinedOutput()
 					if err != nil {
-						return err
+						return fmt.Errorf(string(out))
 					}
 
 					strOut := string(out)
@@ -47,8 +46,11 @@ func main() {
 					}
 
 					cmd = exec.Command("xdotool", "type", "--delay", "1", strOut)
-					err = cmd.Start()
-					return err
+					_, err = cmd.CombinedOutput()
+					if err != nil {
+						return fmt.Errorf(err.Error())
+					}
+					return nil
 				},
 			},
 			{
