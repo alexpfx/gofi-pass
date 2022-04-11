@@ -38,7 +38,9 @@ func main() {
 					if err != nil {
 						return err
 					}
+
 					strOut := string(out)
+
 					if strOut == "" {
 						return fmt.Errorf("password não escolhida")
 					}
