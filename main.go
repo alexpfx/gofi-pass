@@ -2,27 +2,86 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
-	"io/fs"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
 	"github.com/alexpfx/gofi"
+	gofipass "github.com/alexpfx/gofi-pass/internal/gofi-pass"
+	"github.com/alexpfx/gofi-pass/internal/util"
 	"github.com/alexpfx/gofi/dmenu"
 
 	"github.com/urfave/cli/v2"
 )
 
+const minLen = 8
+const maxLen = 32
+
 func main() {
 
 	userHome, _ := os.UserHomeDir()
-	defaultStoreDir := filepath.Join(userHome, ".password-store/")
+	defaultPassStore := filepath.Join(userHome, ".password-store")
+	userConfigDir, _ := os.UserConfigDir()
+	defaultBackupFile := filepath.Join(userConfigDir, "gofi-pass", ".userpass.bkp")
+	var storeDir string
+	var bkpFile string
 
 	app := cli.App{
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:        "file",
+				Aliases:     []string{"f"},
+				Value:       defaultBackupFile,
+				Destination: &bkpFile,
+			},
+		},
 		Commands: []*cli.Command{
+			{
+				Name:    "restore",
+				Aliases: []string{"r"},
+				Action: func(ctx *cli.Context) error {
+					if bkpFile == "" {
+						return errors.New("bkpFile deve ser informado")
+					}
+					key, err := readCheckKey()
+					if err != nil {
+						return err
+					}
+					rst := gofipass.NewRestore(bkpFile, key)
+					return rst.Run()
+				},
+			},
+			{
+				Name:    "backup",
+				Aliases: []string{"bk"},
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:        "store-dir",
+						Aliases:     []string{"d"},
+						Value:       defaultPassStore,
+						Destination: &storeDir,
+					},
+				},
+
+				Action: func(ctx *cli.Context) error {
+					if bkpFile == "" {
+						return errors.New("bkpFile deve ser informado")
+					}
+					if storeDir == "" {
+						return errors.New("storeDir deve ser informado")
+					}
+					key, err := readCheckKey()
+					if err != nil {
+						return err
+					}
+
+					bkp := gofipass.NewBackup(storeDir, bkpFile, key)
+					return bkp.Run()
+				},
+			},
 			{
 				Name:    "pass",
 				Aliases: []string{"p"},
@@ -59,12 +118,12 @@ func main() {
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:  "store-dir",
-						Value: defaultStoreDir,
+						Value: defaultPassStore,
 					},
 				},
 				Action: func(ctx *cli.Context) error {
 					storeDir := ctx.String("store-dir")
-					passList := readPassList(storeDir)
+					passList := util.ReadPassList(storeDir)
 
 					sb := strings.Builder{}
 
@@ -87,32 +146,22 @@ func main() {
 
 	err := app.Run(os.Args)
 	if err != nil {
-		log.Fatal(err)
+		gerr := gofi.New(gofi.Config{
+			Error: err.Error(),
+		})
+		gofi.CallRofi("", gerr.Build())
 	}
 
 }
 
-func readPassList(storeDir string) []string {
-	paths := make([]string, 0)
-	filepath.WalkDir(storeDir, func(path string, dirEntry fs.DirEntry, err error) error {
-		if dirEntry.IsDir() {
-			return nil
-		}
+func readCheckKey() (string, error) {
+	userKey, err := util.ReadKey()
+	if err != nil {
+		return "", err
+	}
+	if len(userKey) < minLen || len(userKey) >= maxLen {
+		return "", fmt.Errorf("chave deve ter entre %d e %d caractéres", minLen, maxLen)
+	}
 
-		ext := filepath.Ext(path)
-		if ext != ".gpg" {
-			return nil
-		}
-
-		name := strings.Replace(path, fmt.Sprintf("%s%s", storeDir, string(filepath.Separator)), "", 1)
-
-		name = strings.Replace(name, ext, "", 1)
-		name = strings.ReplaceAll(name, string(filepath.Separator), "/")
-
-		paths = append(paths, name)
-		return nil
-	})
-
-	return paths
-
+	return util.PadKey(userKey, maxLen)
 }
