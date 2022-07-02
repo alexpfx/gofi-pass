@@ -43,6 +43,7 @@ func main() {
 				Name:    "restore",
 				Aliases: []string{"r"},
 				Action: func(ctx *cli.Context) error {
+					fmt.Println("restaurando")
 					if bkpFile == "" {
 						return errors.New("bkpFile deve ser informado")
 					}
@@ -50,6 +51,7 @@ func main() {
 					if err != nil {
 						return err
 					}
+					fmt.Println("informe a chave de descriptografia")
 					rst := gofipass.NewRestore(bkpFile, key)
 					return rst.Run()
 				},
@@ -73,6 +75,7 @@ func main() {
 					if storeDir == "" {
 						return errors.New("storeDir deve ser informado")
 					}
+					fmt.Println("informe a chave de descriptografia: ")
 					key, err := readCheckKey()
 					if err != nil {
 						return err
@@ -146,6 +149,7 @@ func main() {
 
 	err := app.Run(os.Args)
 	if err != nil {
+		fmt.Println(err)
 		gerr := gofi.New(gofi.Config{
 			Error: err.Error(),
 		})

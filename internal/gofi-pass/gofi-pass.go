@@ -46,6 +46,7 @@ func (b *backup) Run() error {
 
 	for _, n := range passList {
 		p, _ := util.ExecPass(n)
+		fmt.Println(p)
 		list = append(list, passStruct{Name: n, Pass: strings.TrimSpace(p)})
 	}
 
@@ -68,7 +69,7 @@ func (b *backup) Run() error {
 			return err
 		}
 	}
-	
+
 	f, err := os.Create(b.targetFile)
 	if err != nil {
 		log.Fatalf("erro ao criar arquivo com senhas criptografadas %s", err)
