@@ -167,5 +167,6 @@ func readCheckKey() (string, error) {
 		return "", fmt.Errorf("chave deve ter entre %d e %d caractéres", minLen, maxLen)
 	}
 
+	fmt.Println("check key lido")
 	return util.PadKey(userKey, maxLen)
 }
